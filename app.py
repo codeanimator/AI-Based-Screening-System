@@ -248,7 +248,8 @@ with st.sidebar:
     st.divider()
 
     st.markdown("### 🔑 API & Model Configuration")
-    env_key = os.environ.get("GEMINI_API_KEY", "")
+    cloud_secret = st.secrets.get("GEMINI_API_KEY", "") if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets else ""
+    env_key = cloud_secret or os.environ.get("GEMINI_API_KEY", "")
     user_key = st.text_input(
         "Google Gemini API Key",
         value=env_key,
