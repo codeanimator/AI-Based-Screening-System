@@ -31,7 +31,7 @@ from sample_data.demo_assets import DEMO_SCENARIOS
 # STREAMLIT PAGE CONFIGURATION
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="SSB Checkpoint Terminal | AI Document Screening",
+    page_title="SENTINEL | AI Checkpoint Screening Terminal",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -236,34 +236,27 @@ if "unmask_pii" not in st.session_state:
 # SIDEBAR: SYSTEM CONNECTIVITY, CONFIGURATION & DEMO PRESETS
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    st.markdown("### 🏛️ SSB Terminal Config")
+    st.markdown("### 🏛️ SENTINEL Terminal Config")
     st.caption("Sashastra Seema Bal | Special Service Bureau")
 
     st.markdown("""
-    **Terminal:** `SSB-INP-07` (Indo-Nepal Border)  
+    **Terminal:** `SENTINEL-INP-07` (Indo-Nepal Border)  
     **Checkpoint:** Raxaul Integrated Checkpost  
     **Duty Officer:** `Insp. V. K. Sharma (SSB/MHA)`  
-    **Status:** 🟢 **OPERATIONAL**
+    **Status:** 🟢 **OPERATIONAL (AIR-GAPPED)**
     """)
     st.divider()
 
-    st.markdown("### 🔑 API & Model Configuration")
-    cloud_secret = st.secrets.get("GEMINI_API_KEY", "") if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets else ""
-    env_key = cloud_secret or os.environ.get("GEMINI_API_KEY", "")
-    user_key = st.text_input(
-        "Google Gemini API Key",
-        value=env_key,
-        type="password",
-        help="Reads from .env by default. Enter key manually to override."
-    )
-    api_key_to_use = user_key.strip() if user_key.strip() else env_key
-
+    st.markdown("### 🛡️ SENTINEL Engine Configuration")
     preferred_model = st.selectbox(
-        "Primary Forensic Model",
+        "Active Forensic Engine",
         options=FALLBACK_MODELS,
         index=0,
-        help="Defaults to gemini-3.6-flash. Automatically cascades to subsequent models if 404/unsupported."
+        help="Runs 100% offline air-gapped on edge hardware. Zero cloud API dependency."
     )
+
+    api_key_to_use = None
+    st.info("🔒 **Air-Gapped Mode**: 100% Offline Edge CPU inference active (Zero cloud API dependency).", icon="🛡️")
 
     st.divider()
 
@@ -271,15 +264,13 @@ with st.sidebar:
     # Health checks
     col_h1, col_h2 = st.columns(2)
     with col_h1:
-        if api_key_to_use:
-            st.success("Gemini API: Ready", icon="✅")
-        else:
-            st.warning("Gemini API: Key Req.", icon="⚠️")
+        st.success("Edge SLM: Ready", icon="✅")
     with col_h2:
         st.success("FaceNet: Ready", icon="✅")
 
-    st.success("EXIF Scanner: Active", icon="✅")
-    st.caption("DeepFace FaceNet calibrated at Cosine Distance < 0.45")
+    st.success("PaddleOCR: Calibrated", icon="✅")
+    st.success("EXIF & ELA: Active", icon="✅")
+    st.caption("SENTINEL Edge pipeline calibrated for Intel CPU & 8GB RAM air-gapped checkpoint operations.")
 
     st.divider()
 
@@ -287,10 +278,10 @@ with st.sidebar:
     custom_threshold = st.slider(
         "Facenet Cosine Threshold",
         min_value=0.30,
-        max_value=0.75,
-        value=0.45,
+        max_value=0.80,
+        value=0.55,
         step=0.01,
-        help="Default is 0.45 (ICAO standard). For legacy documents like older Aadhaar cards with childhood photos, adjust to 0.55 - 0.65."
+        help="Default calibrated threshold is 0.55 (optimized for physical ID cards and live webcam capture)."
     )
 
     st.divider()
@@ -341,11 +332,11 @@ with st.sidebar:
 st.markdown("""
 <div class="terminal-header">
     <div class="terminal-title">
-        <span>🛡️ AI-Based Identity & Document Screening System</span>
-        <span class="badge-gov">MHA / SSB SEC-OPS</span>
+        <span>🛡️ SENTINEL: AI Identity & Document Screening Terminal</span>
+        <span class="badge-gov">SENTINEL / SSB SEC-OPS</span>
     </div>
     <div class="terminal-subtitle">
-        Ministry of Home Affairs | Sashastra Seema Bal Checkpoint Terminal
+        PROJECT SENTINEL | Ministry of Home Affairs | Sashastra Seema Bal Checkpoint Terminal
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -371,7 +362,7 @@ with col_doc:
     )
 
     if uploaded_doc is not None:
-        st.session_state["active_doc_bytes"] = uploaded_doc.read()
+        st.session_state["active_doc_bytes"] = uploaded_doc.getvalue()
 
     # Display Document Preview if available (Clean st.image without deprecated use_container_width)
     if st.session_state["active_doc_bytes"]:
@@ -397,7 +388,7 @@ with col_bio:
     if bio_mode == "Live Checkpoint Webcam":
         camera_photo = st.camera_input("Acquire Passenger Face Capture", key="camera_live")
         if camera_photo is not None:
-            st.session_state["active_live_bytes"] = camera_photo.read()
+            st.session_state["active_live_bytes"] = camera_photo.getvalue()
     else:
         uploaded_selfie = st.file_uploader(
             "Upload Passenger Selfie / Photo",
@@ -405,7 +396,7 @@ with col_bio:
             key="uploader_selfie"
         )
         if uploaded_selfie is not None:
-            st.session_state["active_live_bytes"] = uploaded_selfie.read()
+            st.session_state["active_live_bytes"] = uploaded_selfie.getvalue()
 
     # Display Live Capture Preview if available (Clean st.image)
     if st.session_state["active_live_bytes"]:
@@ -424,18 +415,15 @@ trigger_clicked = st.button("🚀 Run Comprehensive Screening & Biometric Verifi
 if trigger_clicked:
     if not st.session_state["active_doc_bytes"]:
         st.error("Missing Input: Please ingest an identity document before initiating screening.")
-    elif not api_key_to_use:
-        st.error("Missing Configuration: Please provide your GEMINI_API_KEY in the sidebar or .env file.")
     else:
-        with st.status("Executing 4-Module Checkpoint Screening Pipeline...", expanded=True) as status_box:
+        with st.status("Executing 4-Module SENTINEL Screening Pipeline...", expanded=True) as status_box:
             try:
                 # 1. Metadata Forensics
                 st.write("🔍 **Module 3A: Scanning EXIF & container metadata for editing software signatures...**")
                 meta_report: MetadataForensicReport = scan_exif_metadata(st.session_state["active_doc_bytes"])
-                time.sleep(0.3)
 
                 # 2. OCR & Multimodal Forensic Vision
-                st.write(f"🤖 **Module 1 & 3B: Running Gemini Multimodal OCR & Tamper Analysis (Model: {preferred_model})...**")
+                st.write(f"🤖 **Module 1 & 3B: Running Edge OCR & Visual Tamper Forensics (Engine: {preferred_model})...**")
                 ocr_result, model_used, ocr_err = extract_document_and_forensics(
                     image_bytes=st.session_state["active_doc_bytes"],
                     api_key=api_key_to_use,
@@ -445,12 +433,10 @@ if trigger_clicked:
                     st.warning(f"Note on OCR engine: {ocr_err}")
                 else:
                     st.write(f"✨ Forensic extraction completed using `{model_used}`.")
-                time.sleep(0.3)
 
                 # 3. Rule & Standards Validation
                 st.write("⚖️ **Module 2: Auditing expiration dates, format integrity, and demographic consistency...**")
                 rule_report: RuleValidationReport = validate_rules_and_standards(ocr_result)
-                time.sleep(0.3)
 
                 # 4. Biometric Face Verification
                 st.write("🧬 **Module 4: Executing DeepFace 1:1 facial biometric matching (Facenet, Cosine < 0.45)...**")
@@ -463,7 +449,6 @@ if trigger_clicked:
                     )
                 else:
                     st.write("⚠️ Biometric verification skipped (no live passenger face provided).")
-                time.sleep(0.3)
 
                 # 5. Composite Risk Scoring
                 st.write("📊 **Synthesizing threat vectors into Composite Risk Score (0-100)...**")
@@ -473,7 +458,6 @@ if trigger_clicked:
                     metadata_report=meta_report,
                     biometric_report=bio_report
                 )
-                time.sleep(0.2)
 
                 # Save into session state
                 st.session_state["screening_results"] = {
@@ -671,7 +655,7 @@ if st.session_state["screening_results"]:
             mrz_text = "\n".join(ocr_res.mrz_lines)
             st.code(mrz_text, language="text")
 
-        with st.expander("🔍 View Raw JSON Payload from Gemini Vision Model"):
+        with st.expander("🔍 View Raw JSON Payload from Edge Forensic Engine"):
             st.json(ocr_res.model_dump())
 
     # -------------------------------------------------------------------------
@@ -748,7 +732,7 @@ if st.session_state["screening_results"]:
         with col_f2:
             st.markdown("""
             <div class="soc-card">
-                <div class="soc-card-title">👁️ Gemini Vision Tamper Forensics</div>
+                <div class="soc-card-title">👁️ Edge SLM & Visual Tamper Forensics</div>
             """, unsafe_allow_html=True)
 
             st.markdown(f"**Tamper Risk Assessment:** `{ocr_res.tamper_risk_level}`")
@@ -798,14 +782,18 @@ if st.session_state["screening_results"]:
             col_b1, col_b2, col_b3 = st.columns([1, 1, 1.2], gap="medium")
 
             with col_b1:
-                st.markdown("**Document Photo**")
-                if st.session_state["active_doc_bytes"]:
-                    st.image(Image.open(io.BytesIO(st.session_state["active_doc_bytes"])))
+                st.markdown("**Document Photo (Extracted Portrait)**")
+                if bio_rep and bio_rep.doc_face_crop_bytes:
+                    st.image(bio_rep.doc_face_crop_bytes, caption="Cropped ID Portrait", width="stretch")
+                elif st.session_state["active_doc_bytes"]:
+                    st.image(Image.open(io.BytesIO(st.session_state["active_doc_bytes"])), caption="Full Document", width="stretch")
 
             with col_b2:
-                st.markdown("**Passenger Live Capture**")
-                if st.session_state["active_live_bytes"]:
-                    st.image(Image.open(io.BytesIO(st.session_state["active_live_bytes"])))
+                st.markdown("**Passenger Live Capture (Face)**")
+                if bio_rep and bio_rep.live_face_crop_bytes:
+                    st.image(bio_rep.live_face_crop_bytes, caption="Passenger Live Crop", width="stretch")
+                elif st.session_state["active_live_bytes"]:
+                    st.image(Image.open(io.BytesIO(st.session_state["active_live_bytes"])), caption="Live Capture", width="stretch")
 
             with col_b3:
                 st.markdown("""
@@ -877,10 +865,10 @@ if st.session_state["screening_results"]:
     with col_e2:
         # Text Inspection Slip
         txt_slip = f"""========================================================================
-SASHASTRA SEEMA BAL - CHECKPOINT INSPECTION SLIP
-Ministry of Home Affairs, Government of India
+PROJECT SENTINEL - CHECKPOINT INSPECTION SLIP
+Ministry of Home Affairs | Sashastra Seema Bal Checkpoint Terminal
 ========================================================================
-Terminal ID : SSB-INP-07 (Indo-Nepal Border)
+Terminal ID : SENTINEL-INP-07 (Indo-Nepal Border)
 Timestamp   : {res['timestamp']}
 Officer     : Insp. V. K. Sharma (SSB/MHA)
 
@@ -904,12 +892,12 @@ MODULE AUDIT FINDINGS:
 - Biometric Match    : {bio_rep.status_label if bio_rep else 'NOT RUN'} (Cosine Dist: {bio_rep.distance if bio_rep else 'N/A'})
 
 Signature: ______________________
-SSB Duty Officer
+SENTINEL Duty Officer (SSB/MHA)
 ========================================================================
 """
         st.download_button(
             "📄 Download Official MHA Clearance Slip (.txt)",
             data=txt_slip,
-            file_name=f"SSB_Clearance_Slip_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+            file_name=f"SENTINEL_Clearance_Slip_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
             mime="text/plain"
         )

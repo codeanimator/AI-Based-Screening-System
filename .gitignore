@@ -28,5 +28,6 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
-# Temporary scratch tests
+# Temporary scratch tests and debug scripts
+scratch/
 test_face_crop.py

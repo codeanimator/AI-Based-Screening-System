@@ -5,7 +5,7 @@ SSB Checkpoint Terminal / Ministry of Home Affairs
 Calculates a normalized 0-100 Composite Threat Score synthesizing:
 1. Rule & Standards Validation (Expiry, Chronology, Age vs Photo Contradiction)
 2. Metadata Forensics (EXIF Editing Software Signatures)
-3. Gemini Multimodal Visual Tamper Inspection (Splicing, Headshot Replacement, Font Alteration)
+3. Edge Multimodal Visual Tamper Inspection (Moondream2 SLM & OpenCV ELA)
 4. Biometric Face Verification (DeepFace Facenet Cosine Distance >= 0.45)
 
 Status Thresholds:
@@ -93,17 +93,27 @@ def compute_composite_risk(
 
     # 2. Metadata Forensics Penalties
     if metadata_report.editing_software_detected:
-        points = 40
+        # Desktop or web graphics editors on official ID documents indicate digital fabrication / modification
+        points = 70 if any(s.lower() in ["canva", "photoshop", "gimp", "picsart", "photopea", "paint.net"] for s in metadata_report.detected_software_names) else 40
         software_list = ", ".join(metadata_report.detected_software_names)
         factors.append(ThreatFactor(
             category="Metadata Forensics",
-            description=f"Digital editing software traces discovered in EXIF ({software_list}).",
+            description=f"Digital editing software traces discovered in EXIF / container metadata ({software_list}).",
             points=points,
-            severity="HIGH"
+            severity="CRITICAL" if points >= 70 else "HIGH"
+        ))
+        breakdown["metadata_forensics"] += points
+    elif getattr(metadata_report, "is_screen_capture", False):
+        points = 25
+        factors.append(ThreatFactor(
+            category="Metadata Forensics",
+            description=metadata_report.screen_capture_details,
+            points=points,
+            severity="MEDIUM"
         ))
         breakdown["metadata_forensics"] += points
 
-    # 3. Gemini Multimodal Visual Tamper Penalties
+    # 3. Edge Multimodal Visual Tamper Penalties
     if ocr_result.pixel_splicing_detected:
         points = 35
         factors.append(ThreatFactor(
@@ -115,12 +125,12 @@ def compute_composite_risk(
         breakdown["visual_tampering"] += points
 
     if ocr_result.photo_replacement_signs:
-        points = 40
+        points = 70
         factors.append(ThreatFactor(
             category="Visual Forensics",
             description=f"Photo cut-and-paste / replacement markers: {ocr_result.photo_replacement_details}",
             points=points,
-            severity="HIGH"
+            severity="CRITICAL"
         ))
         breakdown["visual_tampering"] += points
 
@@ -134,14 +144,14 @@ def compute_composite_risk(
         ))
         breakdown["visual_tampering"] += points
 
-    # Check overall tamper risk level stated by Gemini
+    # Check overall tamper risk level stated by Edge Vision Engine
     if ocr_result.tamper_risk_level.upper() == "HIGH" and not (
         ocr_result.pixel_splicing_detected or ocr_result.photo_replacement_signs or ocr_result.font_alteration_detected
     ):
         points = 30
         factors.append(ThreatFactor(
             category="Visual Forensics",
-            description=f"Gemini Forensic Vision flagged HIGH tamper probability: {ocr_result.forensic_verdict_summary}",
+            description=f"Edge Forensic Vision flagged HIGH tamper probability: {ocr_result.forensic_verdict_summary}",
             points=points,
             severity="HIGH"
         ))
@@ -150,7 +160,7 @@ def compute_composite_risk(
         points = 15
         factors.append(ThreatFactor(
             category="Visual Forensics",
-            description=f"Gemini Forensic Vision flagged MEDIUM anomalies: {ocr_result.forensic_verdict_summary}",
+            description=f"Edge Forensic Vision flagged MEDIUM anomalies: {ocr_result.forensic_verdict_summary}",
             points=points,
             severity="MEDIUM"
         ))
