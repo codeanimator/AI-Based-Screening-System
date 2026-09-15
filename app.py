@@ -7,6 +7,13 @@ Production-Ready Security Operations Dashboard
 """
 
 import os
+# Configure runtime environment variables before any C++ libraries load
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["FLAGS_allocator_strategy"] = "naive_best_fit"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 import json
 import time
 from datetime import datetime
