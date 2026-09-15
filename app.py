@@ -8,12 +8,13 @@ Production-Ready Security Operations Dashboard
 
 import os
 # Configure runtime environment variables before any C++ libraries load
-os.environ["TF_USE_LEGACY_KERAS"] = "1"
+# NOTE: TF_USE_LEGACY_KERAS removed — TensorFlow is no longer a dependency
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 os.environ["FLAGS_allocator_strategy"] = "naive_best_fit"
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["ORT_DISABLE_TENSORRT"] = "1"
 
 import json
 import time
@@ -447,7 +448,7 @@ if trigger_clicked:
                 rule_report: RuleValidationReport = validate_rules_and_standards(ocr_result)
 
                 # 4. Biometric Face Verification
-                st.write("🧬 **Module 4: Executing DeepFace 1:1 facial biometric matching (Facenet, Cosine < 0.45)...**")
+                st.write("🧬 **Module 4: Executing InsightFace 1:1 facial biometric matching (ArcFace buffalo_l, Cosine < 0.55)...**")
                 bio_report = None
                 if st.session_state["active_live_bytes"]:
                     bio_report = verify_biometrics(
@@ -784,7 +785,7 @@ if st.session_state["screening_results"]:
     # TAB 4: BIOMETRIC MATCHING
     # -------------------------------------------------------------------------
     with tab4:
-        st.markdown("#### 1:1 Facial Biometric Verification (DeepFace Facenet)")
+        st.markdown("#### 1:1 Facial Biometric Verification (InsightFace ArcFace buffalo_l)")
 
         if bio_rep:
             col_b1, col_b2, col_b3 = st.columns([1, 1, 1.2], gap="medium")
