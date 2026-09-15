@@ -8,6 +8,7 @@ Production-Ready Security Operations Dashboard
 
 import os
 # Configure runtime environment variables before any C++ libraries load
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 os.environ["FLAGS_allocator_strategy"] = "naive_best_fit"

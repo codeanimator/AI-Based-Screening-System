@@ -15,16 +15,21 @@ from dataclasses import dataclass
 from typing import Optional, Tuple
 import tempfile
 import os
-import io
-import cv2
-import numpy as np
-from PIL import Image
-import streamlit as st
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 try:
     from deepface import DeepFace
 except ImportError:
     DeepFace = None
+
+import io
+import cv2
+import numpy as np
+from PIL import Image
+import streamlit as st
 
 
 COSINE_MATCH_THRESHOLD = 0.55
@@ -139,8 +144,6 @@ def verify_biometrics(
         report.risk_score_contribution = 20
         return report
 
-    # Pre-warm model in cache
-    get_facenet_model()
 
     tmp_doc_path = None
     tmp_live_path = None

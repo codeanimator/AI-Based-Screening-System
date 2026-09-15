@@ -12,6 +12,12 @@ SSB Checkpoint Terminal / Ministry of Home Affairs
 """
 
 import os
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["FLAGS_allocator_strategy"] = "naive_best_fit"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import re
 import io
 import base64
