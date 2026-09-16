@@ -16,6 +16,7 @@ os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ["ORT_DISABLE_TENSORRT"] = "1"
 
+import hashlib
 import json
 import time
 from datetime import datetime
@@ -275,7 +276,7 @@ with st.sidebar:
     with col_h1:
         st.success("Edge SLM: Ready", icon="✅")
     with col_h2:
-        st.success("FaceNet: Ready", icon="✅")
+        st.success("InsightFace: Ready", icon="✅")
 
     st.success("PaddleOCR: Calibrated", icon="✅")
     st.success("EXIF & ELA: Active", icon="✅")
@@ -285,7 +286,7 @@ with st.sidebar:
 
     st.markdown("### 🧬 Biometric Calibration")
     custom_threshold = st.slider(
-        "Facenet Cosine Threshold",
+        "ArcFace Cosine Threshold",
         min_value=0.30,
         max_value=0.80,
         value=0.55,
@@ -829,7 +830,7 @@ if st.session_state["screening_results"]:
                 st.markdown("</div>", unsafe_allow_html=True)
 
         else:
-            st.info("No biometric face comparison executed. Capture live passenger webcam in Column 2 to run FaceNet verification.")
+            st.info("No biometric face comparison executed. Capture live passenger webcam in Column 2 to run InsightFace ArcFace verification.")
 
     # -------------------------------------------------------------------------
     # AUDIT DOSSIER EXPORT FOR BORDER OFFICERS
@@ -837,7 +838,17 @@ if st.session_state["screening_results"]:
     st.markdown("---")
     col_e1, col_e2 = st.columns(2)
     with col_e1:
-        # JSON Dossier
+        # ----------------------------------------------------------------
+        # BUILD MASKED DOSSIER
+        # document_number is always privacy-masked in exports regardless
+        # of the officer toggle (raw PII must never leave in a file).
+        # ----------------------------------------------------------------
+        raw_id = ocr_res.document_number
+        masked_id_for_export = mask_identifier(ocr_res.document_type, raw_id)
+
+        ocr_dump = ocr_res.model_dump()
+        ocr_dump["document_number"] = masked_id_for_export  # Zero-PII enforcement
+
         dossier_data = {
             "checkpoint_terminal": "SSB-INP-07",
             "timestamp": res["timestamp"],
@@ -845,7 +856,7 @@ if st.session_state["screening_results"]:
             "composite_risk_score": risk_res.score,
             "verdict": risk_res.status_label,
             "directive": risk_res.recommendation,
-            "document_ocr": ocr_res.model_dump(),
+            "document_ocr": ocr_dump,
             "rule_validation": {
                 "is_expired": rule_rep.is_expired,
                 "days_to_expiry": rule_rep.days_to_expiry,
@@ -864,6 +875,18 @@ if st.session_state["screening_results"]:
                 "similarity": bio_rep.similarity_percentage if bio_rep else None
             }
         }
+
+        # ----------------------------------------------------------------
+        # BLOCKCHAIN AUDIT HASH (SHA-256)
+        # Hash is computed on the deterministic, masked JSON payload so
+        # the same screening result always produces the same hash.
+        # The hash is injected AFTER all fields are set so it covers the
+        # complete dossier (document_ocr, biometrics, verdict, etc.).
+        # ----------------------------------------------------------------
+        canonical_json = json.dumps(dossier_data, sort_keys=True)
+        sha256_hash = hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
+        dossier_data["blockchain_audit_hash"] = sha256_hash
+
         st.download_button(
             "💾 Download JSON Screening Dossier",
             data=json.dumps(dossier_data, indent=2),
@@ -903,6 +926,9 @@ MODULE AUDIT FINDINGS:
 Signature: ______________________
 SENTINEL Duty Officer (SSB/MHA)
 ========================================================================
+======================================= SECURE AUDIT HASH (SHA-256)
+{sha256_hash}
+=======================================================================
 """
         st.download_button(
             "📄 Download Official MHA Clearance Slip (.txt)",
